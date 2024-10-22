@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="http://localhost:5000/socket.io/socket.io.js"></script>
+    <title>Chat Room</title>
+
+    <!-- Styling for the scrollbar -->
+    <style>
+      ::-webkit-scrollbar {
+        width: 5px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: blue;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      class="h-screen flex flex-col sm:w-2/3 lg:w-1/3 p-3.5 mx-auto gap-y-10"
+    >
+      <h1 class="text-3xl font-serif text-center font-bold">
+        Welcome to the Chat Room
+      </h1>
+
+      <!-- Chat Box -->
+      <div
+        class="w-full border-2 border-gray-700 rounded-3xl p-2.5"
+        style="height: 800px"
+      >
+        <div class="w-full h-5/6 overflow-y-auto" id="chat-box"></div>
+
+        <!-- Input Message Section -->
+        <div class="w-full h-12 flex flex-row gap-x-2 mt-16">
+          <input
+            type="text"
+            class="w-4/5 border-2 border-gray-700 rounded-3xl py-1 px-2"
+            id="message-box"
+            placeholder="Type your message..."
+            oninput="toggleSendButton()"
+          />
+          <button
+            class="w-1/5 flex gap-x-1 bg-blue-500 text-white font-semibold rounded-3xl items-center justify-center"
+            id="send-button"
+            disabled
+          >
+            SEND
+            <svg
+              width="24px"
+              height="24px"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M11.5003 12H5.41872M5.24634 12.7972L4.24158 15.7986C3.69128 17.4424 3.41613 18.2643 3.61359 18.7704C3.78506 19.21 4.15335 19.5432 4.6078 19.6701C5.13111 19.8161 5.92151 19.4604 7.50231 18.7491L17.6367 14.1886C19.1797 13.4942 19.9512 13.1471 20.1896 12.6648C20.3968 12.2458 20.3968 11.7541 20.1896 11.3351C19.9512 10.8529 19.1797 10.5057 17.6367 9.81135L7.48483 5.24303C5.90879 4.53382 5.12078 4.17921 4.59799 4.32468C4.14397 4.45101 3.77572 4.78336 3.60365 5.22209C3.40551 5.72728 3.67772 6.54741 4.22215 8.18767L5.24829 11.2793C5.34179 11.561 5.38855 11.7019 5.407 11.8459C5.42338 11.9738 5.42321 12.1032 5.40651 12.231C5.38768 12.375 5.34057 12.5157 5.24634 12.7972Z"
+                stroke="white"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="text-xs font-semibold mt-2.5">
+        Developed by <a href="https://github.com/unknownloop11">Matthew</a>
+      </div>
+    </div>
+
+    <script>
+      const socket = io();
+
+      // Handle socket connection errors
+      socket.on("connect_error", (err) => {
+        console.error(`Connection error: ${err.message}`);
+      });
+
+      // Get username from session or ask user
+      let username = sessionStorage.getItem("username");
+
+      // If username is not set, prompt the user to enter a username
+      if (!username) {
+        while (!username) {
+          username = prompt("Enter your username:");
+
+          if (username) {
+            sessionStorage.setItem("username", username);
+          } else {
+            alert(
+              "Username is required. Please enter a username or create one to proceed."
+            );
+          }
+        }
+      }
+
+      // Display incoming messages in the chat box
+      socket.on("chatMessage", (data) => {
+        const chatBox = document.getElementById("chat-box");
+        const messageElement = document.createElement("div");
+        messageElement.className = "flex flex-row gap-x-2 mb-3";
+
+        // Convert the timestamp to a Date object
+        const timestamp = new Date(data.timestamp);
+        const datetime = `${String(timestamp.getDate()).padStart(
+          2,
+          "0"
+        )}/${String(timestamp.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}/${timestamp.getFullYear()}, ${String(timestamp.getHours()).padStart(
+          2,
+          "0"
+        )}:${String(timestamp.getMinutes()).padStart(2, "0")}`;
+
+        // Check if the message is from the current user
+        if (data.username === username) {
+          // Current user (message on the right)
+          messageElement.classList.add("justify-end");
+          messageElement.innerHTML = `
+                    <div class="flex flex-col gap-y-1 text-right">
+                        <div class="text-sm font-bold">${data.username}</div>
+                        <div class="text-sm bg-blue-500 text-white p-2 rounded-3xl">${data.message}</div>
+                        <div class="text-xs font-extralight">${datetime}</div>
+                    </div>
+                    <div class="w-10 h-10 rounded-full">
+                        <svg width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" stroke="blue" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 14C8.13401 14 5 17.134 5 21H19C19 17.134 15.866 14 12 14Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                `;
+        } else {
+          // Other users (message on the left)
+          messageElement.innerHTML = `
+                    <div class="w-10 h-10 rounded-full">
+                        <svg width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" stroke="gray" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 14C8.13401 14 5 17.134 5 21H19C19 17.134 15.866 14 12 14Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="flex flex-col gap-y-1">
+                        <div class="text-sm font-bold">${data.username}</div>
+                        <div class="text-sm bg-gray-300 p-2 rounded-3xl">${data.message}</div>
+                        <div class="text-xs font-extralight">${datetime}</div>
+                    </div>
+                `;
+        }
+
+        chatBox.appendChild(messageElement);
+        chatBox.scrollTop = chatBox.scrollHeight; // Scroll to bottom
+      });
+
+      // Toggle send button state based on input
+      function toggleSendButton() {
+        const messageBox = document.getElementById("message-box");
+        const sendButton = document.getElementById("send-button");
+        sendButton.disabled = messageBox.value.trim() === "";
+      }
+
+      // Send message on button click
+      document.getElementById("send-button").addEventListener("click", () => {
+        const messageBox = document.getElementById("message-box");
+        const message = messageBox.value;
+
+        // Emit message to server
+        socket.emit("chatMessage", {
+          username: username,
+          message: message,
+          timestamp: Date.now(),
+        });
+
+        // Clear the input box
+        messageBox.value = "";
+        toggleSendButton();
+      });
+
+      // Send message on Enter key press
+      document
+        .getElementById("message-box")
+        .addEventListener("keypress", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            document.getElementById("send-button").click();
+          }
+        });
+    </script>
+  </body>
+</html>

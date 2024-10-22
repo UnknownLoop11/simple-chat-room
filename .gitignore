@@ -1,0 +1,5 @@
+// Used to ignore files and directories in git
+tailwind.config.js
+node_modules   
+dist
+.env
